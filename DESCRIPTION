@@ -1,0 +1,37 @@
+Package: detectgxt
+Title: DetectGxT: detecting gene-by-treatment interactions on molecular count phenotypes
+Version: 0.0.0.9000
+Authors@R: c(
+    person(given = "Yuriko",
+           family = "Harigaya",
+           role = c("aut", "cre"),
+           email = "harigaya@live.unc.edu"),
+    person(given = "Michael",
+           family = "Love",
+           role = "aut"),
+    person(given = "William",
+           family = "Valdar",
+           role = "aut"))
+Description: Detect gene-by-treatment (GxT) interactions on molecular count phenotypes using nonlinear regression.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 3.4.0)
+Imports:
+    methods,
+    magrittr,
+    mvtnorm,
+    stats,
+    purrr,
+    dplyr,
+    tibble,
+    snpStats
+Suggests:
+    knitr,
+    nlme,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr

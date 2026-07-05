@@ -1,0 +1,417 @@
+---
+title: "DetectGxT: detecting gene-by-treatment interactions on molecular count phenotypes accounting for allelic additivity"
+author: "Yuriko Harigaya, Michael Love, William Valdar"
+date: "`r format(Sys.Date())`"
+header_includes:
+    - \newcommand{\Expect}{\mathrm{E}}
+    - \newcommand{\Var}{\mathrm{Var}}
+    - \newcommand{\Cov}{\mathrm{Cov}}
+    - \newcommand{\Norm}{\mathrm{N}}
+    - \newcommand{\iid}{\overset{\mathrm{iid}}{\sim}}
+    - \newcommand{\veps}{\varepsilon}
+    - \newcommand{\bveps}{\boldsymbol{\varepsilon}}
+    - \newcommand{\bA}{\mathbf{A}}
+    - \newcommand{\bK}{\mathbf{K}}
+    - \newcommand{\bI}{\mathbf{I}}
+    - \newcommand{\bB}{\mathbf{B}}
+    - \newcommand{\bR}{\mathbf{R}}
+    - \newcommand{\bV}{\mathbf{V}}
+    - \newcommand{\bX}{\mathbf{X}}
+    - \newcommand{\bY}{\mathbf{Y}}
+    - \newcommand{\bZ}{\mathbf{Z}}
+    - \newcommand{\bU}{\mathbf{U}}
+    - \newcommand{\bO}{\mathbf{O}}
+    - \newcommand{\bT}{\mathbf{T}}
+    - \newcommand{\bG}{\mathbf{G}}
+    - \newcommand{\bSigma}{\boldsymbol{\Sigma}}
+    - \newcommand{\bOmega}{\boldsymbol{\Omega}}
+    - \newcommand{\balpha}{\boldsymbol{\alpha}}
+    - \newcommand{\bbeta}{\boldsymbol{\beta}}
+    - \newcommand{\bmu}{\boldsymbol{\mu}}
+    - \newcommand{\btheta}{\boldsymbol{\theta}}
+    - \newcommand{\bgamma}{\boldsymbol{\gamma}}
+    - \newcommand{\bpsi}{\boldsymbol{\psi}}
+    - \newcommand{\bphi}{\boldsymbol{\phi}}
+    - \newcommand{\bnu}{\boldsymbol{\nu}}
+    - \newcommand{\bu}{\mathbf{u}}
+    - \newcommand{\bv}{\mathbf{v}}
+    - \newcommand{\bw}{\mathbf{w}}
+    - \newcommand{\bx}{\mathbf{x}}
+    - \newcommand{\by}{\mathbf{y}}
+    - \newcommand{\bz}{\mathbf{z}}
+    - \newcommand{\bk}{\mathbf{k}}
+    - \newcommand{\bm}{\mathbf{m}}
+    - \newcommand{\bnull}{\mathbf{0}} 
+    - \newcommand{\bone}{\mathbf{1}}
+output: rmarkdown::html_vignette
+bibliography: ref.bib
+vignette: >
+  %\VignetteIndexEntry{DetectGxT: detecting gene-by-treatment interactions on molecular count phenotypes accounting for allelic additivity}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse=TRUE,
+  comment="#>"
+)
+```
+
+# Introduction
+
+The DetectGxT software provides functions for detecting gene-by-treatment (GxT) interactions on molecular count phenotypes, such as RNA-seq and ATAC-seq data.
+It aims to increase the statistical power to detect interaction (response) molecular QTLs using a nonlinear regression model that captures the relationship between genotypes and transformed molecular count phenotypes more accurately than a commonly used linear regression model.
+
+This software is primarily designed for performing interaction QTL mapping focusing on a set of candidate pairs of features (e.g., gene expression and ATAC-peak regions) and SNPs for which significant genotype effects have been identified in at least one of the control and treatment conditions.
+Note that this type of multi-step approach has been adopted in previous studies, such as @alasoo_shared_2018 and @matoba_stimulating_2024.
+
+A typical data analysis procedure using this package is as follows:
+
+- Step 1: condition-stratified molecular QTL mapping using linear regression
+- Step 2: interaction molecular QTL mapping using nonlinear regression
+    - obtaining the union set from condition-stratified molecular QTL mapping
+	- preparing genotype data using `get_geno()` (optional)
+    - preparing phenotype data using `preprocess_pheno()` (optional)
+    - performing interaction QTL mapping using `map_qtl()`
+
+Minimally, the input for the main function `map_qtl()` is genotypes, pre-processed phenotypes, sequencing sample annotations, and candidate feature-SNP pairs.
+See [Input data](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input-data) for details.
+Optionally, covariate information and a kinship matrix may be supplied.
+The output is a data frame containing a row per feature-SNP pair, with
+estimated coefficients and nominal $P$ values for non-zero GxT interaction.
+
+# Quick start
+
+We first show the minimal code to run DetectGxT.
+See [Input data](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input-data) for how to format the input.
+
+```{r, eval=FALSE}
+# perform interaction QTL mapping
+res <- map_qtl(
+    candidate=candidate, fn="nonlinear",
+    anno=anno, geno=geno, pheno=pheno)
+```
+
+# Input data
+
+## Required
+
+The minimal input for the main function `map_qtl()` is data frames containing candidate feature-SNP pairs, genotypes, processed molecular count phenotypes, and sample annotations.
+The formats of the `geno` and `pheno` data frames are the same as those for [MatrixEQTL](https://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/runit.html).
+
+- `candidate`: A data frame containing feature IDs and SNP IDs in the first and second columns, respectively.
+- `geno`: A data frame formatted as input for MatrixEQTL. The first column must contain SNP IDs. The rest of the columns must contain genotypes, which can be allelic dosage or integer-coded genotypes (0, 1, 2). Each row corresponds to each SNP. Each column corresponds to each sample.
+- `pheno`: A data frame formatted as input for MatrixEQTL. The first column must contain feature IDs (e.g., genes and ATAC-peak regions). The rest of the columns must contain pre-processed molecular phenotypes. Each row corresponds to each feature. Each column corresponds to each sample.
+- `anno`: A data frame containing sequencing sample IDs, subject IDs, and treatment conditions (0 or 1) in the first, second, and third columns, respectively. The columns must be named as "sample", "subject", and "condition".
+
+## Optional
+
+For the minimal code in [Quick start](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#quick-start), we assume that the confounding factors have already been regressed out of the phenotypes.
+We provide options to account for confounding factors through the following input arguments to the `map_qtl()` function.
+
+- `covar`: A data frame containing fixed effect covariates. The first column must contain sample IDs. The rest of the columns must contain covariate values. Each row corresponds to each sample. Each column corresponds to each covariate.
+- `kinship`: A matrix representing kinship (polygenic structure). The row and column names of the matrix must correspond to the set of unique elements in the `subject` column in `anno`.
+
+The format of the `covar` data frame is the same as that for [MatrixEQTL](https://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/runit.html).
+
+# Loading packages
+
+```{r, message=FALSE, warning=FALSE}
+library(detectgxt)
+```
+
+# Step 1: Condition-stratified molecular QTL mapping using linear regression
+
+In this vignette, we consider interaction (response) molecular QTL mapping on a pre-selected set of feature-SNP pairs obtained by condition-stratified molecular QTL mapping.
+Condition-stratified molecular QTL mapping can be performed based on linear regression or linear mixed-effect models using standard software packages, such as [MatrixEQTL](https://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/runit.html), [TensorQTL](https://github.com/broadinstitute/tensorqtl), and [limix_qtl](https://github.com/single-cell-genetics/limix_qtl/wiki).
+This step includes appropriate multiple testing correction and SNP filtering by selecting lead SNPs, performing LD clumping, or conducting conditional analysis.
+See @alasoo_shared_2018 and @matoba_stimulating_2024 for details.
+
+Although assuming linearity between genotypes and transformed molecular count phenotypes can lead to inaccurate effect size estimation, this is unlikely to be a significant issue in detecting associations in a single condition.
+Therefore, we recommend using the standard linear regression approach in step 1 for computational efficiency.
+
+# Step 2: Interaction (response) molecular QTL mapping using nonlinear regression
+
+## Obtaining the union set from step 1
+
+It is necessary to obtain the union set of feature-SNP pairs from step 1 and create a data frame that can be passed to `map_qtl()` using the `candidate` input argument.
+We do not provide a function to perform this task, as it depends on upstream tools used in step 1.
+See [Input data](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#generating-data-using-make_sim_data) for the format of the data frame.
+
+## Formatting sample annotations
+
+In this section, we generate the `anno` data frame, which is used throughout the remaining examples.
+See [Input data](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#generating-data-using-make_sim_data) for the format of the data frame.
+For simplicity, we assume a fully paired design, although the package also supports unpaired and partially paired data.
+
+```{r}
+n.sample <- 160 # number of sequencing samples
+n.sub <- 80 # number of subjects
+
+anno <- data.frame(
+    sample=paste0("s", seq_len(n.sample)),
+    subject=paste0("d", rep(seq_len(n.sub), each=2)),
+    condition=rep(c(0, 1), times=n.sub))
+
+head(anno)
+```
+
+## Preparing genotype data
+
+In this section, we demonstrate how to process genotype data in the [PLINK](https://www.cog-genomics.org/plink/) format to generate a `geno` data frame, using `get_geno()`, which can be passed to `map_qtl()` using the `geno` argument.
+Users can pre-process the data using alternative methods, if preferred.
+
+The `get_geno()` function takes four arguments:
+
+- `candidate`: See [Input data](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input-data).
+- `chromosomes`: An integer vector of chromosome numbers to search for the candidate SNPs.
+- `plink.prefix`: The path prefix shared by all PLINK files, up to and including the base.
+- `plink.suffix`: The file extension of the PLINK binary files (e.g., `"bed"`).
+
+PLINK files must follow the naming convention `<plink.prefix>.<chromosome>.<plink.suffix>`, with `.bim` and `.fam` files sharing the same base name.
+For example, with `plink.prefix="path/to/geno"`, `chromosomes=c(1, 2)`, and `plink.suffix="bed"`, the function reads `path/to/geno.1.bed` and `path/to/geno.2.bed` (along with the corresponding `.bim` and `.fam` files).
+SNPs from all requested chromosomes are stacked into a single output data frame.
+
+The following example uses the PLINK files bundled with the package.
+
+```{r}
+plink.prefix <- file.path(
+    system.file("extdata", "plink", package="detecther"), "geno")
+
+candidate.geno <- data.frame(
+    feat_id=c("f1", "f2"),
+    snp_id=c("g1", "g3"))
+
+geno.ex <- get_geno(
+    candidate=candidate.geno,
+    chromosomes=1,
+    plink.prefix=plink.prefix,
+    plink.suffix="bed")
+
+head(geno.ex)
+```
+
+## Preparing phenotype data
+
+In this section, we demonstrate how to pre-process raw molecular count data to generate a `pheno` data frame, using `preprocess_pheno()`, which can be passed to `map_qtl()` using the `pheno` argument.
+Users can pre-process the data using alternative methods, if preferred.
+
+In the following section, we generate example count data (`count`) using the `make_count_data()` function.
+Users with existing molecular count data may skip to [Input to `preprocess_pheno()`](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input-to-preprocess_pheno).
+
+### Simulating molecular count data
+
+<details>
+<summary>Click to expand</summary>
+
+To create molecular count data, we first specify the number of features.
+
+```{r}
+n.feat <- 10000 # number of features (e.g., genes, ATAC-peaks)
+```
+
+We then use `make_count_data()`, which simulates negative-binomial count data using the nonlinear GxT parametrization consistent with the models in `map_qtl()`.
+By default, all effects are set to zero via `sd=c(0, 0, 0)`.
+To introduce genotype, treatment, or interaction effects into the simulated counts, specify `sd` (to draw per-feature effects from `Normal(0, sd[k])`, where `k` indexes genotype, treatment, and interaction) or `coef` (to fix effects at a given value); exactly one of `sd[k]` or `coef[k]` must be non-`NA` for each effect.
+
+```{r}
+count <- make_count_data(
+    anno=anno, n.feat=n.feat, n.sample=n.sample)
+```
+
+</details>
+
+### Input to `preprocess_pheno()`
+
+The following code displays the count data generated in the previous section.
+
+```{r}
+count[1:5, 1:5]
+```
+
+### Running `preprocess_pheno()`
+
+The `preprocess_pheno()` function first scales and transforms the data.
+Then it residualizes the data against the treatment indicators, performs principal component analysis, and residualizes the transformed data against a desired number of principal components.
+
+The `preprocess_pheno()` function takes arguments including:
+
+- `count`: A matrix containing molecular counts (non-negative integers). The row and column names correspond to feature IDs and sample IDs, respectively.
+- `anno`: See [Input data](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input-data).
+- `num.pc`: An integer specifying the number of molecular phenotype principal components to control for.
+
+The following code runs the function using the `anno` and `count` objects generated above.
+
+```{r}
+pheno <- preprocess_pheno(
+    count=count, anno=anno, num.pc=10)
+
+pheno[1:5, 1:5]
+```
+
+Note that the `pheno` object above is only for demonstrating the usage of `preprocess_pheno()` and will not be used in the subsequent section, as it does not include genotype or treatment effects.
+
+The number of principal components can be adjusted as described in @matoba_stimulating_2024.
+Alternatively, a scree plot or an automatic elbow detection method can be used to select an appropriate number.
+In the latter case, the `list` argument can be set to `TRUE` to obtain the output from the `prcomp()` function from the stats package.
+
+```{r}
+pheno <- preprocess_pheno(
+    count=count, anno=anno, num.pc=10, list=TRUE)
+
+names(pheno)
+```
+
+In this case, the output is a list object containing the `pheno` data frame and the `pca` object returned from `prcomp()`.
+
+## Interaction QTL mapping using `map_qtl()`
+
+In this section, we demonstrate how to use `map_qtl()`.
+The function takes `candidate`, `geno`, `pheno`, and `anno` as required input and returns a data frame containing effect sizes and $P$ values.
+
+In the following section, we generate example input data (`candidate`, `geno`, `pheno`) using the `make_sim_data()` function.
+Users with existing pre-processed phenotype data may skip to [Input to `map_qtl()`](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input_to-map_qtl).
+
+### Generating data using `make_sim_data()`
+
+<details>
+<summary>Click to expand</summary>
+
+In this section, we generate genotype and phenotype data using the `make_sim_data()` function, which will be used for demonstrating the usage of the `map_qtl()` function.
+Note that `make_sim_data()` returns simulated phenotype data that mimics preprocessed data.
+
+We will draw genotype, treatment, and interaction effect sizes from Normal distributions with zero mean and effect-specific standard deviations.
+The following code specifies the standard deviations.
+
+```{r}
+sd <- c(1.5, 2.0, 1.0) # genotype, treatment, interaction
+```
+
+We will generate data based on eight models corresponding to all $2^3$ combinations of the genotype, treatment, and interaction effects being either zero or non-zero.
+Specifically, we define models 1-8 as follows.
+
+|Model|Genotype|Treatment|Interaction|
+|--|--|--|--|
+|1|0|0|0|
+|2|1|0|0|
+|3|0|1|0|
+|4|1|1|0|
+|5|0|0|1|
+|6|1|0|1|
+|7|0|1|1|
+|8|1|1|1|
+
+Here, 0 and 1 indicate that the effect is zero and non-zero, respectively.
+The number of replicates per model can be specified using the `num`
+input argument, which expects an eight-dimensional integer vector.
+With the following vector, 900 simulations will be based on the fourth model, and 100 simulations will be based on the eighth model.
+
+```{r}
+num <- c(0, 0, 0, 900, 0, 0, 0, 100)
+```
+
+The following code generates data for 1000 feature-SNP pairs.
+
+```{r}
+d <- make_sim_data(
+    num=num, anno=anno, fn="nonlinear", sd=sd, filter.geno=TRUE)
+```
+
+Note that, if `filter.geno` is set to `TRUE`, SNPs for which either of the homozygotes is missing in at least one of the control and treated conditions are excluded.
+See [Running `map_qtl()`](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#running-map_qtl) for details.
+
+</details>
+
+### Input to `map_qtl()`
+
+The following code displays the input data generated in the previous section.
+Note that only the first two columns are required in the `candidate` data frame, while this example contains additional columns.
+
+```{r}
+head(d$candidate) # candidate
+
+d$geno[1:5, 1:5] # geno
+
+d$pheno[1:5, 1:5] # pheno
+```
+
+### Running `map_qtl()`
+
+We now perform interaction QTL mapping using `map_qtl()`.
+See [Required](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#required) for the required input arguments, `candidate`, `geno`, `pheno`, and `anno`.
+As the phenotype is assumed to have been residualized against covariates, we omit the `covar` input argument (see [Optional](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#optional)).
+We omit `kinship`, as we do not include random effects in this example.
+See [Including random effects](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#optional) for how to include random effects.
+
+Additional arguments include:
+
+- `fn`: A character string specifying the function. This must be one of "nonlinear" and "linear", corresponding to nonlinear and linear models, respectively.
+- `filter.geno`: A Boolean variable as to whether to ensure that homozygotes for both alleles have at least one observation in both control and treated conditions.
+
+```{r}
+res <- map_qtl(
+    candidate=d$candidate, fn="nonlinear",
+    geno=d$geno, pheno=d$pheno, anno=anno,
+    filter.geno=TRUE)
+
+head(res)
+```
+
+The output is a data frame containing feature IDs, SNP IDs, effect estimates, and $P$ values for non-zero GxT interaction.
+Note that `sigma_u`, which represents estimates of random effect standard deviations, is `NA`, as we did not include random effects in this example.
+
+We emphasize that we set `filter.geno` to `TRUE` to exclude SNPs for which either of the homozygotes is missing in at least one of the control and treated conditions, which we call the "AA-AB" SNPs.
+We generally recommend excluding these SNPs, as it is often impossible to reliably estimate genotype effects with nonlinear regression.
+See [our manuscript](https://yharigaya.github.io/detectgxt/#publication) for further details.
+In practice, there is no need to pass this argument explicitly, as this is the default setting.
+Users can filter data differently before running `map_qtl()`, if preferred. 
+In this case, `filter.geno` must be set to `FALSE`.
+
+## Including random effects
+
+In this section, we demonstrate how to fit a nonlinear mixed effect model including polygenic or subject random effects.
+
+The following code generates an example kinship matrix.
+We use an identity matrix, which controls for the subject random effect, for simplicity.
+The row and column names of the matrix must correspond to the set of unique elements in the `subject` column in `anno`.
+
+```{r}
+kinship <- diag(n.sub)
+rownames(kinship) <- colnames(kinship) <- unique(anno$subject)
+```
+
+We then run `map_qtl()`, specifying the input arguments `ranef` and `kinship`.
+Note that the `kinship` argument can be omitted in practice when the matrix is identity.
+
+```{r}
+res.ranef <- map_qtl(
+    candidate=d$candidate, fn="nonlinear",
+    geno=d$geno, pheno=d$pheno, anno=anno,
+    ranef=TRUE, kinship=kinship, filter.geno=TRUE)
+
+head(res.ranef)
+```
+
+The output now contains values in the `sigma_u` column, which represents estimates of random effect standard deviations.
+
+```{r, eval=FALSE, echo=FALSE}
+tu.lambda  <- get_eigen(anno, kinship)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+res.ranef <- map_qtl(
+    candidate=d$candidate, fn="nonlinear",
+    geno=d$geno, pheno=d$pheno, anno=anno,
+    tu.lambda=tu.lambda, type="response")
+
+head(res.ranef)
+```
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+# References

@@ -1,0 +1,21 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/LICENSE.html</loc></url>
+<url><loc>/articles/detectgxt.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/reference/filter_geno.html</loc></url>
+<url><loc>/reference/get_eigen.html</loc></url>
+<url><loc>/reference/get_geno.html</loc></url>
+<url><loc>/reference/get_mle.html</loc></url>
+<url><loc>/reference/get_mu.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/make_count_data.html</loc></url>
+<url><loc>/reference/make_sim_data.html</loc></url>
+<url><loc>/reference/map_qtl.html</loc></url>
+<url><loc>/reference/map_qtl_for_each.html</loc></url>
+<url><loc>/reference/plot_profile_h2.html</loc></url>
+<url><loc>/reference/preprocess_pheno.html</loc></url>
+</urlset>
+
