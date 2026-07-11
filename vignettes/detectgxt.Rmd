@@ -271,7 +271,7 @@ In this section, we demonstrate how to use `map_qtl()`.
 The function takes `candidate`, `geno`, `pheno`, and `anno` as required input and returns a data frame containing effect sizes and $P$ values.
 
 In the following section, we generate example input data (`candidate`, `geno`, `pheno`) using the `make_sim_data()` function.
-Users with existing pre-processed phenotype data may skip to [Input to `map_qtl()`](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input_to-map_qtl).
+Users with existing pre-processed phenotype data may skip to [Input to `map_qtl()`](https://yharigaya.github.io/detectgxt/articles/detectgxt.html#input-to-map_qtl).
 
 ### Generating data using `make_sim_data()`
 
