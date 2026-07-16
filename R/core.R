@@ -144,6 +144,7 @@ make_sim_data <- function(num, anno, fn, genotype=NULL,
         stop("only one of the `coef` and `sd` needs to be specified for the interaction effect")
     }
 
+    validate_anno(anno)
     sample <- anno$sample
     subject <- anno$subject
     t <- anno$condition
@@ -152,36 +153,7 @@ make_sim_data <- function(num, anno, fn, genotype=NULL,
 
     if (ranef) {
 
-        if (is.null(kinship)) {
-            A <- diag(n.sub)
-            rownames(A) <- colnames(A) <- unique(subject)
-        } else {
-            A <- kinship
-            if (is.null(colnames(A)) | is.null(rownames(A))) {
-                stop(paste(
-                    "the kinship matrix must have",
-                    "the row and column names"))
-            }
-            if (!all(colnames(A) == rownames(A))) {
-                stop(paste(
-                    "the row and column names of",
-                    "the kinship matrix must be identical"))
-            }
-            if (!all(rownames(A) == unique(subject))) {
-                stop(paste(
-                    "the row names of",
-                    "the kinship matrix must match",
-                    "the subjects"))
-            }
-            asym <- max(abs(A - t(A)))
-            if (asym > 1e-8) {
-                stop(paste0(
-                    "the kinship matrix is not symmetric ",
-                    "(max |K - t(K)| = ", signif(asym, 3), "); ",
-                    "please check the kinship matrix"),
-                    call.=FALSE)
-            }
-        }
+        A <- validate_kinship(kinship, unique(subject))
 
         if (is.null(sigma.u)) {
             sigma.u <- 1
@@ -374,6 +346,7 @@ make_sim_data <- function(num, anno, fn, genotype=NULL,
 get_eigen <- function(anno,
                       kinship=NULL) {
 
+    validate_anno(anno)
     t <- anno$condition
     n <- length(t)
     if (!is.numeric(t)) {
@@ -395,35 +368,7 @@ get_eigen <- function(anno,
         factor(levels=sub.name) %>%
         as.numeric
 
-    if (is.null(kinship)) {
-        A <- diag(n.sub)
-    } else if (is.matrix(kinship)) {
-        A <- kinship
-        if (is.null(colnames(A)) | is.null(rownames(A))) {
-            stop(paste(
-                "the kinship matrix must have",
-                "the row and column names"))
-        }
-        if (!all(colnames(A) == rownames(A))) {
-            stop(paste(
-                "the row and column names of",
-                "the kinship matrix must be identical"))
-        }
-        if (!all(rownames(A) == sub.name)) {
-            stop(paste(
-                 "the row names of",
-                 "the kinship matrix must match",
-                 "the subjects"))
-        }
-        asym <- max(abs(A - t(A)))
-        if (asym > 1e-8) {
-            stop(paste0(
-                "the kinship matrix is not symmetric ",
-                "(max |K - t(K)| = ", signif(asym, 3), "); ",
-                "please check the kinship matrix"),
-                call.=FALSE)
-        }
-    }
+    A <- validate_kinship(kinship, sub.name)
 
     Z <- matrix(0, nrow=n, ncol=n.sub)
     for (i in seq_len(n)) {
@@ -549,6 +494,8 @@ map_qtl <- function(candidate,
                     control=NULL,
                     gls=FALSE) {
 
+    validate_anno(anno)
+
     run_map_qtl <- function(i, candidate, fn, geno, pheno,
                             anno, covar, tu.lambda=NULL,
                             type, seed) {
@@ -630,6 +577,23 @@ map_qtl <- function(candidate,
         }
     }
 
+    if (!is.null(covar)) {
+        if (!is.data.frame(covar) || ncol(covar) < 1) {
+            stop("`covar` must be a data frame with sample IDs in the first column")
+        }
+        covar.sample <- covar[[1]]
+        if (anyNA(covar.sample)) {
+            stop("sample IDs in `covar` cannot be missing")
+        }
+        if (anyDuplicated(covar.sample)) {
+            stop("sample IDs in `covar` must be unique")
+        }
+        missing.covar <- setdiff(anno$sample, covar.sample)
+        if (length(missing.covar) > 0) {
+            stop("samples in `anno` must be present in `covar`")
+        }
+    }
+
     if (filter.geno) {
         filtered <- filter_geno(candidate=candidate, geno=geno, anno=anno)
         candidate <- filtered$included
@@ -638,9 +602,16 @@ map_qtl <- function(candidate,
     if (ranef) {
 
         if (!is.null(kinship)) {
-            if (!all(!is.na(
-                      match(rownames(kinship),
-                            unique(anno$subject))))) {
+            if (!is.matrix(kinship)) {
+                stop("`kinship` must be a matrix")
+            }
+            if (is.null(rownames(kinship)) || is.null(colnames(kinship))) {
+                stop(paste(
+                    "the kinship matrix must have",
+                    "the row and column names"))
+            }
+            if (!all(unique(anno$subject) %in% rownames(kinship)) ||
+                !all(unique(anno$subject) %in% colnames(kinship))) {
                 stop("subjects must match in `kinship` and `anno`")
             }
 
@@ -793,6 +764,12 @@ map_qtl_for_each <- function(input,
     y <- input$y
     n <- length(y)
     if (!(is.numeric(g) & is.numeric(t) & is.numeric(y))) {
+        stop("`input` has an incorrect format")
+    }
+    if (length(g) != n || length(t) != n) {
+        stop("`input` has an incorrect format")
+    }
+    if (!is.null(input$subject) && length(input$subject) != n) {
         stop("`input` has an incorrect format")
     }
 
@@ -1008,6 +985,11 @@ get_mle <- function(input, fn.gp, m,
     ranef <- !is.null(tu.lambda)
     if (!is.null(tu.lambda) && !is.list(tu.lambda)) {
         stop("`tu.lambda` has an incorrect format")
+    }
+    if (ranef &&
+        (!is.numeric(epsilon) || length(epsilon) != 1 ||
+         is.na(epsilon) || epsilon <= 0 || epsilon >= 1)) {
+        stop("`epsilon` must be a numeric scalar in (0, 1)")
     }
 
     ini <- get_ini(input=input, m=m, ranef=ranef)

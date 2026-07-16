@@ -177,7 +177,7 @@ The following example uses the PLINK files bundled with the package.
 
 ```{r}
 plink.prefix <- file.path(
-    system.file("extdata", "plink", package="detecther"), "geno")
+    system.file("extdata", "plink", package="detectgxt"), "geno")
 
 candidate.geno <- data.frame(
     feat_id=c("f1", "f2"),

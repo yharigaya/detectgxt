@@ -201,6 +201,22 @@ test_that("preprocess_pheno supports num.pc=0", {
     expect_false(anyNA(result))
 })
 
+test_that("preprocess_pheno errors on negative counts", {
+    count.bad <- count.ut
+    count.bad[1, 1] <- -1
+    expect_error(
+        preprocess_pheno(count=count.bad, anno=anno.ut),
+        "`count` must contain non-negative values")
+})
+
+test_that("preprocess_pheno errors on zero-total samples", {
+    count.bad <- count.ut
+    count.bad[, 1] <- 0
+    expect_error(
+        preprocess_pheno(count=count.bad, anno=anno.ut),
+        "positive total counts")
+})
+
 # test make_count_data()
 
 test_that("make_count_data returns an integer matrix of correct dimensions", {
@@ -279,6 +295,13 @@ test_that("make_count_data errors when filter.geno cannot be satisfied", {
     )
 })
 
+test_that("make_count_data errors when anno is missing required columns", {
+    anno.bad <- anno.ut[, c("sample", "condition")]
+    expect_error(
+        make_count_data(anno=anno.bad, n.feat=2, n.sample=n.sample),
+        "`anno` must contain")
+})
+
 test_that("non-zero sd produces different counts than null model", {
     set.seed(7)
     res.null <- make_count_data(anno=anno.ut, n.feat=5, n.sample=n.sample)
@@ -332,7 +355,7 @@ test_that("make_count_data errors when both sd and coef are specified for an eff
 # test get_geno()
 
 plink.prefix <- file.path(
-    system.file("extdata", "plink", package="detecther"), "geno")
+    system.file("extdata", "plink", package="detectgxt"), "geno")
 
 test_that("get_geno returns a data frame", {
     candidate <- make_candidate("f1", "g1")

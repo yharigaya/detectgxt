@@ -69,6 +69,15 @@ test_that("make_sim_data errors when num is not length 8", {
     )
 })
 
+test_that("make_sim_data errors when anno is missing required columns", {
+    anno.bad <- anno[, c("sample", "condition")]
+    expect_error(
+        make_sim_data(num=num.min, anno=anno.bad, fn="nonlinear",
+                      sd=sd.valid),
+        "`anno` must contain"
+    )
+})
+
 test_that("make_sim_data errors when both coef and sd given for genotype effect", {
     expect_error(
         make_sim_data(num=num.min, anno=anno, fn="nonlinear",
@@ -233,6 +242,15 @@ test_that("map_qtl_for_each errors when tu.lambda is not NULL or a list", {
     expect_error(
         map_qtl_for_each(input=input.valid, fn="linear", tu.lambda="bad"),
         "`tu.lambda` has an incorrect format"
+    )
+})
+
+test_that("map_qtl_for_each errors when input vector lengths differ", {
+    bad <- input.valid
+    bad$g <- bad$g[-1]
+    expect_error(
+        map_qtl_for_each(input=bad, fn="linear"),
+        "`input` has an incorrect format"
     )
 })
 
@@ -584,6 +602,16 @@ test_that("map_qtl with covar produces a p-value in [0, 1]", {
     expect_true(result$p_value >= 0 & result$p_value <= 1)
 })
 
+test_that("map_qtl with covar errors when samples are missing", {
+    covar.bad <- covar.ut[-1, ]
+    expect_error(
+        map_qtl(
+            candidate=candidate.one, fn="linear",
+            geno=geno.ut, pheno=pheno.ut, anno=anno.ut,
+            covar=covar.bad, type="response"),
+        "samples in `anno` must be present in `covar`")
+})
+
 # covariate correction fixtures
 
 set.seed(42)
@@ -778,6 +806,13 @@ test_that("get_eigen errors on non-symmetric kinship", {
     )
 })
 
+test_that("get_eigen errors when kinship is not a matrix", {
+    expect_error(
+        get_eigen(anno=anno.kn, kinship=as.data.frame(K.valid)),
+        "`kinship` must be a matrix"
+    )
+})
+
 test_that("get_eigen succeeds without warning on non-PSD kinship", {
     expect_no_condition(
         get_eigen(anno=anno.kn, kinship=K.npsd)
@@ -801,6 +836,16 @@ test_that("make_sim_data errors on non-symmetric kinship", {
     )
 })
 
+test_that("make_sim_data errors when kinship is not a matrix", {
+    expect_error(
+        make_sim_data(
+            num=c(0, 0, 0, 0, 0, 0, 0, 1), anno=anno.kn, fn="nonlinear",
+            coef=c(0.5, 0.3, 0.2), ranef=TRUE,
+            kinship=as.data.frame(K.valid)),
+        "`kinship` must be a matrix"
+    )
+})
+
 test_that("make_sim_data errors on non-PD variance component", {
     expect_error(
         make_sim_data(
@@ -816,4 +861,12 @@ test_that("make_sim_data succeeds with valid PSD kinship", {
         coef=c(0.5, 0.3, 0.2), ranef=TRUE, kinship=K.valid)
     expect_type(result, "list")
     expect_named(result, c("candidate", "geno", "pheno"))
+})
+
+test_that("get_mle errors when epsilon is outside (0, 1)", {
+    expect_error(
+        get_mle(input=input.valid, fn.gp="linear", m=c(1, 1, 1),
+                tu.lambda=get_eigen(anno), epsilon=1),
+        "`epsilon` must be a numeric scalar in \\(0, 1\\)"
+    )
 })

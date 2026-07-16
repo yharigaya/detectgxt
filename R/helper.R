@@ -115,6 +115,63 @@ get_model_mat <- function() {
     model.mat
 }
 
+validate_anno <- function(anno,
+                          columns=c("sample", "subject", "condition")) {
+    if (!is.data.frame(anno) || !all(columns %in% colnames(anno))) {
+        stop(paste0(
+            "`anno` must contain ",
+            paste(sprintf("'%s'", columns), collapse=", ")),
+            call.=FALSE)
+    }
+    invisible(TRUE)
+}
+
+validate_kinship <- function(kinship, subjects) {
+    n.sub <- length(subjects)
+    if (is.null(kinship)) {
+        A <- diag(n.sub)
+        rownames(A) <- colnames(A) <- subjects
+        return(A)
+    }
+
+    if (!is.matrix(kinship)) {
+        stop("`kinship` must be a matrix", call.=FALSE)
+    }
+    A <- kinship
+    if (nrow(A) != ncol(A)) {
+        stop("the kinship matrix must be square", call.=FALSE)
+    }
+    if (is.null(colnames(A)) | is.null(rownames(A))) {
+        stop(paste(
+            "the kinship matrix must have",
+            "the row and column names"),
+            call.=FALSE)
+    }
+    if (!all(colnames(A) == rownames(A))) {
+        stop(paste(
+            "the row and column names of",
+            "the kinship matrix must be identical"),
+            call.=FALSE)
+    }
+    if (!all(rownames(A) == subjects)) {
+        stop(paste(
+             "the row names of",
+             "the kinship matrix must match",
+             "the subjects"),
+             call.=FALSE)
+    }
+    asym <- max(abs(A - t(A)))
+    if (asym > 1e-8) {
+        stop(paste0(
+            "the kinship matrix is not symmetric ",
+            "(max |K - t(K)| = ", signif(asym, 3), "); ",
+            "please check the kinship matrix"),
+            call.=FALSE)
+    }
+
+    A
+}
+
 format_input <- function(d, num, anno) {
 
     n.sample <- length(anno$sample)

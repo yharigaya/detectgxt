@@ -124,6 +124,19 @@ preprocess_pheno <- function(count, anno, covar=NULL,
     }
 
     # scale and transform data according to Palowitch et al. (2018)
+    if (!(is.matrix(count) || is.data.frame(count))) {
+        stop("`count` must be a matrix or data frame")
+    }
+    if (!all(vapply(as.data.frame(count), is.numeric, logical(1)))) {
+        stop("`count` must contain numeric values")
+    }
+    count <- as.matrix(count)
+    if (anyNA(count) || any(!is.finite(count))) {
+        stop("`count` cannot contain missing or non-finite values")
+    }
+    if (any(count < 0)) {
+        stop("`count` must contain non-negative values")
+    }
     n.feat <- nrow(count)
     n.sample <- ncol(count)
     if (is.null(colnames(count)) || any(colnames(count) == "")) {
@@ -146,6 +159,9 @@ preprocess_pheno <- function(count, anno, covar=NULL,
         stop("`num.pc` must be a non-negative integer scalar")
     }
     tot <- colSums(count)
+    if (any(tot <= 0)) {
+        stop("all samples in `count` must have positive total counts")
+    }
     xbar <- sum(tot) / (n.feat * n.sample)
     scaled <- sweep(count, 2, tot, "/") * n.feat * xbar
     transformed <- log(scaled + 1)
@@ -279,6 +295,7 @@ make_count_data <- function(anno, n.feat, n.sample,
                             disp.mean.rel=function(x) 4/x + 0.1,
                             size.factors=rep(1, n.sample)) {
 
+    validate_anno(anno)
     if (nrow(anno) != n.sample) {
         stop("`n.sample` must match the number of rows in `anno`")
     }
