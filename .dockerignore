@@ -1,0 +1,13 @@
+.git
+.Rproj.user
+.Rhistory
+.RData
+.httr-oauth
+.DS_Store
+.quarto
+
+*.Rcheck
+..Rcheck
+*.tar.gz
+
+docs
