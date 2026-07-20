@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">detectgxt</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -44,6 +44,9 @@
 </li>
 <li>
   <a href="reference/index.html">Reference</a>
+</li>
+<li>
+  <a href="news/index.html">Changelog</a>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right"></ul>
@@ -61,12 +64,10 @@
 <div class="section level1">
 <div class="page-header"><h1 id="detectgxt">detectgxt<a class="anchor" aria-label="anchor" href="#detectgxt"></a>
 </h1></div>
-<!-- [ClassifyGxT](https://yharigaya.github.io/classifygxt) -->
 <div class="section level2">
 <h2 id="about">About<a class="anchor" aria-label="anchor" href="#about"></a>
 </h2>
-<p>DetectGxT is a method for detecting gene-by-treatment (GxT) interactions on molecular count phenotypes, such as RNA-seq and ATAC-seq data. <!--It takes as input a list of feature-SNP pairs (or SNPs) for which significant genotype effects have already been identified in at least one of the control and treated conditions.
-Individual genotype and phenotype data for these pairs in both conditions are also required.--> The key feature of this method is the use of nonlinear regression, which captures the relationship between genotypes and transformed molecular count phenotypes more accurately than a commonly used linear regression model. See <a href="https://yharigaya.github.io/detectgxt/articles/detectgxt.html" class="external-link"><code>Get started</code></a> and <a href="https://yharigaya.github.io/detectgxt/reference/index.html" class="external-link"><code>Reference</code></a> for usage instructions.</p>
+<p>DetectGxT is a method for detecting gene-by-treatment (GxT) interactions on molecular count phenotypes, such as RNA-seq and ATAC-seq data. The key feature of this method is the use of nonlinear regression, which captures the relationship between genotypes and transformed molecular count phenotypes more accurately than a commonly used linear regression model. See <a href="https://yharigaya.github.io/detectgxt/articles/detectgxt.html" class="external-link"><code>Get started</code></a> and <a href="https://yharigaya.github.io/detectgxt/reference/index.html" class="external-link"><code>Reference</code></a> for usage instructions.</p>
 <p>Portions of the code and documentation were generated with the assistance of Claude Code (Anthropic) and Codex (OpenAI). We have reviewed and verified the materials produced by these tools.</p>
 </div>
 <div class="section level2">
@@ -82,9 +83,46 @@ Individual genotype and phenotype data for these pairs in both conditions are al
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>The <em>detectgxt</em> R package can be installed using <em>devtools</em>.</p>
-<pre><code><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"devtools"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"yharigaya/detectgxt"</span><span class="op">)</span></span></code></pre>
+<p>The <em>detectgxt</em> R package can be installed from GitHub using <em>devtools</em>.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"devtools"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"yharigaya/detectgxt"</span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="system-prerequisites">System prerequisites<a class="anchor" aria-label="anchor" href="#system-prerequisites"></a>
+</h3>
+<p><em>detectgxt</em> imports <a href="https://bioconductor.org/packages/snpStats/" class="external-link">snpStats</a>, a Bioconductor package that includes compiled C code. Most users will not need to install additional system libraries.</p>
+<p>If installation fails while compiling a dependency from source with an error such as <code>zlib.h: No such file or directory</code>, install the zlib development headers for your system and then re-run <code><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">devtools::install_github()</a></code>:</p>
+<ul>
+<li>Debian/Ubuntu: <code>sudo apt-get install zlib1g-dev</code>
+</li>
+<li>RHEL/Fedora/CentOS: <code>sudo dnf install zlib-devel</code> or <code>sudo yum install zlib-devel</code>
+</li>
+<li>macOS: install the Xcode Command Line Tools with <code>xcode-select --install</code>; if using Homebrew R, also try <code>brew install zlib</code>
+</li>
+</ul>
+<p>On Windows, no separate zlib installation is usually needed. If R asks to build packages from source, install the version of <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> matching your R version.</p>
+<p>If <code>snpStats</code> is not installed automatically, install it from Bioconductor first:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"snpStats"</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"yharigaya/detectgxt"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="using-a-container">Using a container<a class="anchor" aria-label="anchor" href="#using-a-container"></a>
+</h3>
+<p>A container image with <em>detectgxt</em> and its runtime dependencies is published to GitHub Container Registry.</p>
+<p>With Docker:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> pull ghcr.io/yharigaya/detectgxt:latest</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--rm</span> ghcr.io/yharigaya/detectgxt:latest Rscript <span class="at">-e</span> <span class="st">'library(detectgxt)'</span></span></code></pre></div>
+<p>On HPC systems where Apptainer/Singularity is used instead of Docker, pull the same image directly:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">apptainer</span> pull detectgxt.sif docker://ghcr.io/yharigaya/detectgxt:latest</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="ex">apptainer</span> exec detectgxt.sif Rscript <span class="at">-e</span> <span class="st">'library(detectgxt)'</span></span></code></pre></div>
+<p>This image provides <em>detectgxt</em> and its runtime dependencies only; projects with additional package or data requirements should build their own image from <code>ghcr.io/yharigaya/detectgxt:latest</code>.</p>
+</div>
 </div>
 </div>
   </div>
